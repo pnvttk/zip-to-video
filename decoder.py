@@ -1,46 +1,32 @@
+import argparse
 import numpy as np
 from PIL import Image
 import os
-import argparse
 
-DEFAULT_OUTPUT = 'restored_file.zip'
-IMAGE_WIDTH = 1920
-IMAGE_HEIGHT = 1080
-PIXEL_BITS = 8
-METADATA_BITS = 32
+DEFAULT_OUTPUT = "decoded_file.zip"
+
+def images_to_binary_data(folder_path):
+    image_files = sorted([f for f in os.listdir(folder_path) if f.startswith('encoded_') and f.endswith('.png')])
+    all_data = []
+    for img_file in image_files:
+        img = Image.open(os.path.join(folder_path, img_file))
+        img_data = np.array(img)
+        all_data.extend(img_data.flatten())
+    return all_data
 
 def binary_data_to_bytes(binary_data):
-    return bytearray(int(binary_data[i:i + 8], 2) for i in range(0, len(binary_data), 8))
+    # Remove padding
+    while binary_data and binary_data[-1] == 0:
+        binary_data.pop()
+    return bytes(binary_data)
 
-def decode_image(image_path):
-    image = Image.open(image_path)
-    image_array = np.array(image)
-    
-    binary_data = ''
-    for row in image_array:
-        for pixel in row:
-            binary_data += format(pixel, '08b')
-    
-    return binary_data
-
-def process_images(output_folder):
-    binary_data_with_metadata = ''
-    
-    for file_name in sorted(os.listdir(output_folder)):
-        file_path = os.path.join(output_folder, file_name)
-        binary_data_with_metadata += decode_image(file_path)
-    
-    # Extract metadata and binary data
-    metadata = binary_data_with_metadata[:METADATA_BITS]
-    data_length = int(metadata, 2)
-    binary_data = binary_data_with_metadata[METADATA_BITS:METADATA_BITS + data_length]
-    
-    return binary_data
+def process_images(folder_path):
+    return images_to_binary_data(folder_path)
 
 def main():
     parser = argparse.ArgumentParser(description="Decode images to file.")
     parser.add_argument('--decode', required=True, help="Folder containing images.")
-    parser.add_argument('--output', type=str,  help="Output file name.", default=DEFAULT_OUTPUT)
+    parser.add_argument('--output', type=str, help="Output file name.", default=DEFAULT_OUTPUT)
 
     args = parser.parse_args()
 
@@ -49,6 +35,8 @@ def main():
     
     with open(args.output, 'wb') as file:
         file.write(byte_data)
+
+    print(f"File decoded and saved as {args.output}")
 
 if __name__ == "__main__":
     main()
