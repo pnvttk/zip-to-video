@@ -1,11 +1,37 @@
+import os
+import cv2
+import math
+import shutil
 import argparse
 import numpy as np
 from PIL import Image
-import math
-import os
 
+DEFAULT_OUTPUT_VIDEO = "output.avi"
 DEFAULT_OUTPUT_FOLDER = "encoded_images"
 IMAGE_SIZE = (1920, 1080)
+
+def images_to_video(image_folder, output_video, fps=30.0):
+    images = [img for img in os.listdir(image_folder) if img.startswith("encoded_") and img.endswith(".png")]
+
+    # Sort images numerically
+    images.sort(key=lambda x: int(x.split('_')[1].split('.')[0]))  
+
+    frame = cv2.imread(os.path.join(image_folder, images[0]))
+    height, width, layers = frame.shape
+
+    # FFV1 codec for lossless compression
+    fourcc = cv2.VideoWriter_fourcc(*'FFV1')  
+    video = cv2.VideoWriter(output_video, fourcc, fps, (width, height))
+
+    for image in images:
+        video.write(cv2.imread(os.path.join(image_folder, image)))
+
+    cv2.destroyAllWindows()
+    shutil.rmtree(image_folder, ignore_errors=True)
+    print(f"Created {output_video} successfully")
+    print(f"Removing {image_folder} directory")
+
+    video.release()
 
 def file_to_images(file_path, output_folder, image_size=IMAGE_SIZE):
     # Read the file as bytes
@@ -37,11 +63,12 @@ def process_zip_file(file_path, output_folder):
 def main():
     parser = argparse.ArgumentParser(description="Encode file to images.")
     parser.add_argument('--encode', required=True, help="File to encode.")
-    parser.add_argument('--output-folder', type=str, help="Output folder for images.", default=DEFAULT_OUTPUT_FOLDER)
+    parser.add_argument('--output', type=str, help="Output video name.", default=DEFAULT_OUTPUT_VIDEO)
 
     args = parser.parse_args()
 
-    process_zip_file(args.encode, args.output_folder)
+    process_zip_file(args.encode, DEFAULT_OUTPUT_FOLDER)
+    images_to_video(DEFAULT_OUTPUT_FOLDER, args.output)
 
 if __name__ == "__main__":
     main()
