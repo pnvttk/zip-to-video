@@ -4,6 +4,7 @@ import shutil
 import argparse
 import numpy as np
 from PIL import Image
+from utils.progressbar import tqdm
 
 DEFAULT_OUTPUT = "restored_file.zip"
 DEFAULT_INPUT_FOLDER = "decoded_images"
@@ -12,33 +13,40 @@ def video_to_images(video_path, output_folder):
     os.makedirs(output_folder, exist_ok=True)
 
     video = cv2.VideoCapture(video_path)
+    total_frame = int(video.get(cv2.CAP_PROP_FRAME_COUNT))
     
     frame_count = 0
-    while True:
-        ret, frame = video.read()
-        if not ret:
-            break
-        
-        output_path = os.path.join(output_folder, f'decoded_{frame_count}.png')
-        cv2.imwrite(output_path, frame)
-        frame_count += 1
+    with tqdm(total=total_frame, desc="Processing video frames") as pbar:
+        while True:
+            ret, frame = video.read()
+            if not ret:
+                break
+            
+            output_path = os.path.join(output_folder, f'decoded_{frame_count}.png')
+            cv2.imwrite(output_path, frame)
+            frame_count += 1
+            pbar.update(1)
 
     video.release()
     return frame_count
 
 def images_to_binary_data(folder_path):
-    image_files = sorted([f for f in os.listdir(folder_path) if f.startswith('decoded_') and f.endswith('.png')])
     all_data = []
-    for img_file in image_files:
+    image_files = sorted([f for f in os.listdir(folder_path) if f.startswith('decoded_') and f.endswith('.png')])
+
+    for img_file in tqdm(image_files, desc="Converting images to binary data") :
         img = Image.open(os.path.join(folder_path, img_file))
         img_data = np.array(img)
         all_data.extend(img_data.flatten())
+
     return all_data
 
 def binary_data_to_bytes(binary_data):
-    # Remove padding
-    while binary_data and binary_data[-1] == 0:
-        binary_data.pop()
+    with tqdm(total=len(binary_data), desc="Processing binary data") as pbar:
+        while binary_data and binary_data[-1] == 0:
+            binary_data.pop()
+            pbar.update(1)  
+
     return bytes(binary_data)
 
 def process_images(folder_path):

@@ -5,6 +5,7 @@ import shutil
 import argparse
 import numpy as np
 from PIL import Image
+from utils.progressbar import tqdm
 
 DEFAULT_OUTPUT_VIDEO = "output.avi"
 DEFAULT_OUTPUT_FOLDER = "encoded_images"
@@ -23,7 +24,7 @@ def images_to_video(image_folder, output_video, fps=30.0):
     fourcc = cv2.VideoWriter_fourcc(*'FFV1')  
     video = cv2.VideoWriter(output_video, fourcc, fps, (width, height))
 
-    for image in images:
+    for image in tqdm(images, desc="Converting images to video"):
         video.write(cv2.imread(os.path.join(image_folder, image)))
 
     cv2.destroyAllWindows()
@@ -46,7 +47,7 @@ def file_to_images(file_path, output_folder, image_size=IMAGE_SIZE):
     padded_data = file_data + b'\0' * (images_needed * image_size[0] * image_size[1] * 3 - len(file_data))
     
     # Create and save images
-    for i in range(images_needed):
+    for i in tqdm(range(images_needed), desc="Converting file to images"):
         start = i * image_size[0] * image_size[1] * 3
         end = start + image_size[0] * image_size[1] * 3
         img_data = np.frombuffer(padded_data[start:end], dtype=np.uint8).reshape(image_size[1], image_size[0], 3)
